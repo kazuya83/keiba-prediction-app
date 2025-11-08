@@ -40,3 +40,4 @@ logs/
 .cache/
 tmp/
 
+backend/app/seed/__init__.py
