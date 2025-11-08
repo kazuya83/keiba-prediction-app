@@ -23,7 +23,7 @@ keiba/
 
 ```bash
 # 1. リポジトリのクローン
-git clone <repository-url>
+git clone https://github.com/kazuya83/keiba-prediction-app
 cd keiba
 
 # 2. 環境変数ファイルの作成（必要に応じて編集）

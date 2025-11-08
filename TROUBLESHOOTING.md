@@ -74,8 +74,8 @@ git commit -m "Initial commit: プロジェクト基盤構築完了
 その後、GitHubでリポジトリを作成し：
 
 ```powershell
-# リモートリポジトリを追加（your-usernameとyour-repository-nameを置き換える）
-git remote add origin https://github.com/your-username/your-repository-name.git
+# リモートリポジトリを追加
+git remote add origin https://github.com/kazuya83/keiba-prediction-app.git
 
 # プッシュ
 git push -u origin main
