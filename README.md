@@ -2,7 +2,6 @@
 
 機械学習を活用した競馬予測Webアプリケーション
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18+-61DAFB.svg)](https://reactjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688.svg)](https://fastapi.tiangolo.com/)
@@ -227,5 +226,5 @@ chcp 65001 | Out-Null
 
 ## ライセンス
 
-MIT License
+このプロジェクトは All Rights Reserved です。詳細については [LICENSE](LICENSE) ファイルを参照してください。
 
