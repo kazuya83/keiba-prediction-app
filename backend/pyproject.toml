@@ -12,6 +12,8 @@ fastapi = "^0.110.0"
 uvicorn = { extras = ["standard"], version = "^0.30.0" }
 pydantic = "^2.7.0"
 sqlalchemy = "^2.0.30"
+alembic = "^1.13.0"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.3.0"
@@ -20,6 +22,30 @@ flake8 = "^7.0.0"
 mypy = "^1.10.0"
 pytest = "^8.2.0"
 httpx = "^0.27.0"
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+preview = true
+
+[tool.isort]
+profile = "black"
+line_length = 88
+combine_as_imports = true
+include_trailing_comma = true
+multi_line_output = 3
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+per-file-ignores = []
+exclude = [".venv", "__pycache__", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_unused_configs = true
+ignore_missing_imports = true
+strict = true
 
 [build-system]
 requires = ["poetry-core"]

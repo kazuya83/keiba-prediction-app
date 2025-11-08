@@ -1,7 +1,7 @@
 PYTHON_PROJECT_DIR := backend
 FRONTEND_PROJECT_DIR := frontend
 
-.PHONY: setup format lint test up down clean
+.PHONY: setup fmt lint test up down clean
 
 setup:
 	@echo "==> Installing backend dependencies with Poetry"
@@ -9,12 +9,14 @@ setup:
 	@echo "==> Installing frontend dependencies with pnpm"
 	cd $(FRONTEND_PROJECT_DIR) && pnpm install
 
-format:
+fmt:
 	@echo "==> Formatting backend (black, isort)"
 	cd $(PYTHON_PROJECT_DIR) && poetry run black .
 	cd $(PYTHON_PROJECT_DIR) && poetry run isort .
 	@echo "==> Formatting frontend (prettier)"
 	cd $(FRONTEND_PROJECT_DIR) && pnpm exec prettier --write .
+
+format: fmt
 
 lint:
 	@echo "==> Linting backend (flake8, mypy)"
