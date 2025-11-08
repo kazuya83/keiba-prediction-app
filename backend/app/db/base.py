@@ -18,7 +18,8 @@ def import_all_models() -> None:
     モデルを追加した際は、この関数内で対象モジュールをインポートするか、
     モデル定義ファイルの import 副作用で Base に登録されるよう調整する。
     """
-    # 現時点では参照モデルが存在しないため、処理はプレースホルダー。
+    from app import models  # noqa: F401
+
     return None
 
 

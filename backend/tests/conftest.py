@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db_session
-from app.db.base import Base
+from app.db.base import Base, import_all_models
 from app.main import create_app
 
 TEST_DATABASE_URL = "sqlite://"
@@ -26,6 +26,7 @@ def db_engine() -> Generator[Engine, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    import_all_models()
     Base.metadata.create_all(bind=engine)
     try:
         yield engine

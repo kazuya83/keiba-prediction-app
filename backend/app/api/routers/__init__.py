@@ -2,7 +2,10 @@
 
 from fastapi import APIRouter, FastAPI
 
+from app.api.routers import users
+
 api_router = APIRouter()
+api_router.include_router(users.router)
 
 
 def register_routers(application: FastAPI, prefix: str = "") -> None:
