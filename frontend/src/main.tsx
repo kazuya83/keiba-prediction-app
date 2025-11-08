@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
+import { AuthProvider } from './context'
 import './index.css'
 import { startErrorMonitoring } from './utils/errorMonitor'
 import { errorHandler, handleUnhandledRejection } from './utils/errorHandler'
@@ -42,7 +43,9 @@ window.addEventListener('load', () => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <AuthProvider>
+      <App />
+    </AuthProvider>
   </React.StrictMode>,
 )
 

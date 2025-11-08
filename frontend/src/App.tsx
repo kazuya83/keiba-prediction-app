@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
+import RequireAuth from './components/RequireAuth'
 import Home from './pages/Home'
+import Login from './pages/Login'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
@@ -11,11 +13,19 @@ function App() {
       }}
     >
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <RequireAuth>
+                <Layout>
+                  <Home />
+                </Layout>
+              </RequireAuth>
+            }
+          />
+        </Routes>
       </Router>
     </ErrorBoundary>
   )
