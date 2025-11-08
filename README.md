@@ -21,6 +21,21 @@ keiba/
 
 ### Docker Composeを使用した起動（推奨）
 
+#### Windows PowerShellでの文字化け対策
+
+PowerShellで文字化けが発生する場合は、以下のコマンドでエンコーディングを設定してください：
+
+```powershell
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 | Out-Null
+```
+
+#### Docker Composeのコマンド
+
+Docker Compose V2を使用している場合（Docker Desktopに含まれています）、`docker compose`（ハイフンなし）を使用してください。
+V1を使用している場合は`docker-compose`（ハイフンあり）を使用してください。
+
 ```bash
 # 1. リポジトリのクローン
 git clone https://github.com/kazuya83/keiba-prediction-app
@@ -30,9 +45,14 @@ cd keiba
 # .envファイルは既にdocker-compose.ymlに設定済み
 
 # 3. Docker Composeでサービスを起動
+# Docker Compose V2の場合
+docker compose up -d
+# または Docker Compose V1の場合
 docker-compose up -d
 
 # 4. データベースマイグレーションの実行
+docker compose exec backend alembic upgrade head
+# または
 docker-compose exec backend alembic upgrade head
 
 # 5. サービスへのアクセス
@@ -45,21 +65,27 @@ docker-compose exec backend alembic upgrade head
 
 ```bash
 # すべてのサービスのログ
+docker compose logs -f
+# または
 docker-compose logs -f
 
 # 特定のサービスのログ
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f db
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
 ```
 
 ### サービスの停止
 
 ```bash
 # サービスの停止
+docker compose down
+# または
 docker-compose down
 
 # データベースも含めて完全に削除
+docker compose down -v
+# または
 docker-compose down -v
 ```
 
@@ -118,13 +144,15 @@ npm run dev
 
 ```bash
 # マイグレーションの実行
+docker compose exec backend alembic upgrade head
+# または
 docker-compose exec backend alembic upgrade head
 
 # マイグレーションファイルの作成
-docker-compose exec backend alembic revision --autogenerate -m "説明"
+docker compose exec backend alembic revision --autogenerate -m "説明"
 
 # マイグレーションのロールバック
-docker-compose exec backend alembic downgrade -1
+docker compose exec backend alembic downgrade -1
 ```
 
 ### ローカル開発の場合
@@ -143,6 +171,31 @@ alembic downgrade -1
 ```
 
 ## トラブルシューティング
+
+### Dockerがインストールされていない
+
+- Docker Desktopをインストールしてください: https://www.docker.com/products/docker-desktop/
+- インストール後、Dockerが起動していることを確認してください
+- `docker --version`コマンドでバージョンを確認できます
+
+### Windows PowerShellでの文字化け
+
+PowerShellで文字化けが発生する場合：
+
+```powershell
+# エンコーディングをUTF-8に設定
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 | Out-Null
+```
+
+または、PowerShellのプロファイル（`$PROFILE`）に上記の設定を追加することで、毎回のセッションで自動的に適用されます。
+
+### docker-composeコマンドが見つからない
+
+- Docker Compose V2（Docker Desktopに含まれています）を使用している場合、`docker compose`（ハイフンなし）を使用してください
+- Docker Compose V1を使用している場合、`docker-compose`（ハイフンあり）を使用してください
+- `docker compose version`または`docker-compose --version`でインストール状況を確認できます
 
 ### データベース接続エラー
 
