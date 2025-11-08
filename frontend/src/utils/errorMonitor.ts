@@ -9,10 +9,12 @@ class ErrorMonitor {
   private isMonitoring = false
   private originalConsoleError: typeof console.error
   private originalConsoleWarn: typeof console.warn
+  private originalConsoleLog: typeof console.log
   private errorCount = 0
   private errorThreshold = 5 // 5回のエラーで復旧を試みる
   private errorWindow = 10000 // 10秒間
   private errorTimestamps: number[] = []
+  private isInternalLog = false // 内部ログフラグ
 
   /**
    * エラー監視を開始
@@ -30,16 +32,23 @@ class ErrorMonitor {
     // 元のコンソールメソッドを保存
     this.originalConsoleError = console.error.bind(console)
     this.originalConsoleWarn = console.warn.bind(console)
+    this.originalConsoleLog = console.log.bind(console)
 
     // コンソールエラーをインターセプト
     console.error = (...args: any[]) => {
-      this.handleConsoleError(args)
+      // 内部ログの場合は処理をスキップ
+      if (!this.isInternalLog) {
+        this.handleConsoleError(args)
+      }
       this.originalConsoleError(...args)
     }
 
     // コンソール警告をインターセプト（重大な警告のみ）
     console.warn = (...args: any[]) => {
-      this.handleConsoleWarn(args)
+      // 内部ログの場合は処理をスキップ
+      if (!this.isInternalLog) {
+        this.handleConsoleWarn(args)
+      }
       this.originalConsoleWarn(...args)
     }
 
@@ -52,7 +61,7 @@ class ErrorMonitor {
       this.cleanupOldErrors()
     }, this.errorWindow)
 
-    console.log('Error monitoring started')
+    this.safeLog('Error monitoring started')
   }
 
   /**
@@ -68,12 +77,13 @@ class ErrorMonitor {
     // 元のコンソールメソッドを復元
     console.error = this.originalConsoleError
     console.warn = this.originalConsoleWarn
+    console.log = this.originalConsoleLog
 
     // イベントリスナーを削除
     window.removeEventListener('error', this.handleWindowError)
     window.removeEventListener('unhandledrejection', this.handleUnhandledRejection)
 
-    console.log('Error monitoring stopped')
+    this.safeLog('Error monitoring stopped')
   }
 
   /**
@@ -95,6 +105,11 @@ class ErrorMonitor {
         }
       })
       .join(' ')
+
+    // 空のメッセージやスタックトレースのみの場合は無視
+    if (!errorMessage || errorMessage.trim().length === 0) {
+      return
+    }
 
     // 重大なエラーのみを記録
     if (this.isCriticalError(errorMessage)) {
@@ -179,6 +194,20 @@ class ErrorMonitor {
    * 重大なエラーかどうかを判定
    */
   private isCriticalError(message: string): boolean {
+    // 通常のログメッセージを除外
+    const ignoredPatterns = [
+      /レース選択ボタンがクリックされました/i,
+      /予測履歴ボタンがクリックされました/i,
+      /^Error logged:/i,
+      /^Recovery/i,
+      /^Error monitoring/i,
+    ]
+
+    // 無視すべきパターンに一致する場合はエラーとして扱わない
+    if (ignoredPatterns.some((pattern) => pattern.test(message))) {
+      return false
+    }
+
     const criticalPatterns = [
       /uncaught/i,
       /unhandled/i,
@@ -190,6 +219,11 @@ class ErrorMonitor {
       /chunk load error/i,
       /loading chunk/i,
       /script error/i,
+      /cannot read property/i,
+      /cannot read properties/i,
+      /is not a function/i,
+      /is not defined/i,
+      /is null or undefined/i,
     ]
 
     return criticalPatterns.some((pattern) => pattern.test(message))
@@ -237,7 +271,7 @@ class ErrorMonitor {
    * 自動復旧を試みる
    */
   private attemptRecovery(): void {
-    console.warn(
+    this.safeLog(
       `Too many errors detected (${this.errorCount}). Attempting automatic recovery...`
     )
 
@@ -247,9 +281,9 @@ class ErrorMonitor {
 
     // 復旧を試みる
     if (errorHandler.recover()) {
-      console.log('Recovery initiated. Page will reload...')
+      this.safeLog('Recovery initiated. Page will reload...')
     } else {
-      console.error('Recovery failed. Please refresh the page manually.')
+      this.safeError('Recovery failed. Please refresh the page manually.')
     }
   }
 
@@ -279,10 +313,33 @@ class ErrorMonitor {
   getErrorCount(): number {
     return this.errorCount
   }
+
+  /**
+   * エラーモニターをバイパスして安全にログを出力
+   */
+  private safeLog(...args: any[]): void {
+    this.isInternalLog = true
+    this.originalConsoleLog(...args)
+    this.isInternalLog = false
+  }
+
+  /**
+   * エラーモニターをバイパスして安全にエラーを出力
+   */
+  safeError(...args: any[]): void {
+    this.isInternalLog = true
+    this.originalConsoleError(...args)
+    this.isInternalLog = false
+  }
 }
 
 // シングルトンインスタンス
 export const errorMonitor = new ErrorMonitor()
+
+// グローバルに公開（エラーハンドラーからアクセス可能にする）
+if (typeof window !== 'undefined') {
+  ;(window as any).__errorMonitor__ = errorMonitor
+}
 
 /**
  * エラー監視を開始するヘルパー関数

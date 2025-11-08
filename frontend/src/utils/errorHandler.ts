@@ -45,13 +45,26 @@ class ErrorHandler {
     }
 
     // コンソールにも出力（開発環境）
+    // エラーモニターのsafeErrorメソッドを使用して、ループを防ぐ
     if (import.meta.env?.DEV) {
-      console.error('Error logged:', errorInfo)
+      // グローバルに公開されたエラーモニターのsafeErrorメソッドを使用
+      const globalErrorMonitor = (window as any).__errorMonitor__
+      if (globalErrorMonitor && typeof globalErrorMonitor.safeError === 'function') {
+        globalErrorMonitor.safeError('Error logged:', errorInfo)
+      } else {
+        // フォールバック: 通常のconsole.errorを使用（エラーモニターが初期化されていない場合）
+        console.error('Error logged:', errorInfo)
+      }
     }
 
     // エラーをサーバーに送信（オプション）
     this.sendErrorToServer(errorInfo).catch((err) => {
-      console.error('Failed to send error to server:', err)
+      const globalErrorMonitor = (window as any).__errorMonitor__
+      if (globalErrorMonitor && typeof globalErrorMonitor.safeError === 'function') {
+        globalErrorMonitor.safeError('Failed to send error to server:', err)
+      } else {
+        console.error('Failed to send error to server:', err)
+      }
     })
   }
 
