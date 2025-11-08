@@ -1,0 +1,42 @@
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Node.js
+node_modules/
+dist/
+build/
+.turbo/
+.next/
+coverage/
+
+# Environment & secrets
+.env
+.env.*
+!*.env.example
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+
+# OS / tooling
+.cache/
+tmp/
+
