@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, DateTime, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.auth_token import AuthToken
 
 
 class User(Base):
@@ -35,6 +40,11 @@ class User(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+    auth_tokens: Mapped[list["AuthToken"]] = relationship(
+        "AuthToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:

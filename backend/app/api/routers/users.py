@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session
+from app.api.deps import (
+    get_current_active_user,
+    get_current_admin,
+    get_db_session,
+)
 from app.crud import user as user_crud
+from app.models.user import User
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -22,6 +27,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 def create_user(
     user_in: UserCreate,
     db: Session = Depends(get_db_session),
+    _: User = Depends(get_current_admin),
 ) -> UserRead:
     """管理者向けのユーザー作成エンドポイント。"""
     if user_crud.get_user_by_email(db, user_in.email):
@@ -47,21 +53,10 @@ def create_user(
     summary="自身のユーザー情報を取得する",
 )
 def read_current_user(
-    user_id: int = Query(
-        ...,
-        ge=1,
-        description="認証未実装のため暫定的にユーザーIDを指定してください。",
-    ),
-    db: Session = Depends(get_db_session),
+    current_user: User = Depends(get_current_active_user),
 ) -> UserRead:
     """自己参照用のユーザー情報取得エンドポイント。"""
-    user = user_crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="ユーザーが見つかりません。",
-        )
-    return user
+    return current_user
 
 
 @router.patch(
@@ -71,25 +66,14 @@ def read_current_user(
 )
 def update_current_user(
     user_in: UserUpdate,
-    user_id: int = Query(
-        ...,
-        ge=1,
-        description="認証未実装のため暫定的にユーザーIDを指定してください。",
-    ),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db_session),
 ) -> UserRead:
     """自己参照用のユーザー情報更新エンドポイント。"""
-    user = user_crud.get_user(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="ユーザーが見つかりません。",
-        )
-
     if not user_in.model_fields_set:
-        return user
+        return current_user
 
-    if user_in.email and user_in.email != user.email:
+    if user_in.email and user_in.email != current_user.email:
         existing_user = user_crud.get_user_by_email(db, user_in.email)
         if existing_user:
             raise HTTPException(
@@ -98,7 +82,7 @@ def update_current_user(
             )
 
     try:
-        updated_user = user_crud.update_user(db, user, user_in)
+        updated_user = user_crud.update_user(db, current_user, user_in)
     except IntegrityError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

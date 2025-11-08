@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from jose import JWTError, jwt
 from passlib.context import CryptContext
+
+from app.core.config import get_settings
 
 
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+class InvalidTokenError(Exception):
+    """トークンが検証に失敗した場合に送出される例外。"""
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -25,32 +34,107 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    subject: str,
+    subject: str | int,
     *,
     expires_delta: timedelta | None = None,
+    token_type: str = "access",
     additional_claims: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    """JWT 実装前提のアクセストークン情報を組み立てるプレースホルダー。"""
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES)
+) -> str:
+    """JWT のアクセストークンを生成する。"""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    expire = now + (
+        expires_delta
+        or timedelta(minutes=settings.access_token_expire_minutes)
     )
-    token = secrets.token_urlsafe(32)
+
     payload: dict[str, Any] = {
-        "access_token": token,
-        "token_type": "bearer",
-        "expires_at": expire,
-        "sub": subject,
+        "sub": str(subject),
+        "type": token_type,
+        "exp": expire,
+        "iat": now,
+        "nbf": now,
+        "jti": uuid.uuid4().hex,
     }
     if additional_claims:
         payload.update(additional_claims)
+
+    return jwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_token(token: str, *, token_type: str | None = None) -> dict[str, Any]:
+    """JWT を復号し、期待する種別であることを検証する。"""
+    settings = get_settings()
+    try:
+        payload = jwt.decode(
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except JWTError as exc:  # トークン署名/期限エラー
+        raise InvalidTokenError("無効なトークンです。") from exc
+
+    if token_type and payload.get("type") != token_type:
+        raise InvalidTokenError("トークン種別が一致しません。")
+
     return payload
+
+
+def create_refresh_token() -> str:
+    """リフレッシュトークンのプレーンテキストを生成する。"""
+    return secrets.token_urlsafe(48)
+
+
+def hash_token(token: str) -> str:
+    """トークンを SHA-256 でハッシュ化する。"""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def create_oauth_state(
+    provider: str,
+    *,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """OAuth 用の state パラメータを署名付きで生成する。"""
+    settings = get_settings()
+    now = datetime.now(timezone.utc)
+    expire = now + (
+        expires_delta
+        or timedelta(minutes=settings.oauth_state_ttl_minutes)
+    )
+    payload = {
+        "sub": provider,
+        "type": "oauth_state",
+        "nonce": secrets.token_urlsafe(16),
+        "iat": now,
+        "nbf": now,
+        "exp": expire,
+    }
+    return jwt.encode(
+        payload,
+        settings.jwt_secret_key,
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_oauth_state(state: str) -> dict[str, Any]:
+    """OAuth state を検証してペイロードを返す。"""
+    return decode_token(state, token_type="oauth_state")
 
 
 __all__ = [
     "DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES",
+    "InvalidTokenError",
     "create_access_token",
+    "create_oauth_state",
+    "create_refresh_token",
+    "decode_oauth_state",
+    "decode_token",
     "get_password_hash",
+    "hash_token",
     "verify_password",
 ]
-
-

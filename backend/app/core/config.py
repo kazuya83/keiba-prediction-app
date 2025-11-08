@@ -26,6 +26,45 @@ class Settings(BaseModel):
     api_prefix: str = Field(default="/api", alias="API_PREFIX")
     debug: bool = Field(default=False, alias="DEBUG")
     database_url: str | None = Field(default=None, alias="DATABASE_URL")
+    jwt_secret_key: str = Field(default="dev-secret-key", alias="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    access_token_expire_minutes: int = Field(
+        default=30,
+        alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    refresh_token_expire_minutes: int = Field(
+        default=60 * 24 * 7,
+        alias="REFRESH_TOKEN_EXPIRE_MINUTES",
+    )
+    oauth_state_ttl_minutes: int = Field(
+        default=10,
+        alias="OAUTH_STATE_TTL_MINUTES",
+    )
+    google_client_id: str | None = Field(default=None, alias="GOOGLE_CLIENT_ID")
+    google_client_secret: str | None = Field(
+        default=None,
+        alias="GOOGLE_CLIENT_SECRET",
+    )
+    google_redirect_uri: str | None = Field(
+        default=None,
+        alias="GOOGLE_REDIRECT_URI",
+    )
+    google_scope: str = Field(
+        default="openid email profile",
+        alias="GOOGLE_SCOPE",
+    )
+    google_authorize_url: str = Field(
+        default="https://accounts.google.com/o/oauth2/v2/auth",
+        alias="GOOGLE_AUTHORIZE_URL",
+    )
+    google_token_url: str = Field(
+        default="https://oauth2.googleapis.com/token",
+        alias="GOOGLE_TOKEN_URL",
+    )
+    google_userinfo_url: str = Field(
+        default="https://openidconnect.googleapis.com/v1/userinfo",
+        alias="GOOGLE_USERINFO_URL",
+    )
 
 
 @lru_cache
