@@ -8,7 +8,7 @@ from typing import Protocol
 
 from decimal import Decimal
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -60,6 +60,19 @@ class SqlAlchemyRaceRepository:
             .order_by(Race.race_date.desc(), Race.id.desc())
         )
 
+    def _filtered_query(
+        self,
+        *,
+        race_date: date | None = None,
+        venue: str | None = None,
+    ) -> Select[tuple[Race]]:
+        statement = self._base_query()
+        if race_date is not None:
+            statement = statement.where(Race.race_date == race_date)
+        if venue is not None:
+            statement = statement.where(Race.venue == venue)
+        return statement
+
     def get(self, race_id: int) -> Race | None:
         statement = self._base_query().where(Race.id == race_id)
         return self._db.scalars(statement).first()
@@ -72,13 +85,23 @@ class SqlAlchemyRaceRepository:
         race_date: date | None = None,
         venue: str | None = None,
     ) -> Sequence[Race]:
-        statement = self._base_query()
+        statement = self._filtered_query(race_date=race_date, venue=venue)
+        statement = statement.offset(offset).limit(limit)
+        return self._db.scalars(statement).all()
+
+    def count(
+        self,
+        *,
+        race_date: date | None = None,
+        venue: str | None = None,
+    ) -> int:
+        statement = select(func.count(Race.id))
         if race_date is not None:
             statement = statement.where(Race.race_date == race_date)
         if venue is not None:
             statement = statement.where(Race.venue == venue)
-        statement = statement.offset(offset).limit(limit)
-        return self._db.scalars(statement).all()
+        total = self._db.scalar(statement)
+        return int(total or 0)
 
     def save(self, race: Race) -> Race:
         self._db.add(race)

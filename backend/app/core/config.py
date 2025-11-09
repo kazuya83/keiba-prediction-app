@@ -40,6 +40,18 @@ class Settings(BaseModel):
         default=10,
         alias="OAUTH_STATE_TTL_MINUTES",
     )
+    cache_backend: str = Field(default="inmemory", alias="CACHE_BACKEND")
+    cache_prefix: str = Field(default="keiba-cache", alias="CACHE_PREFIX")
+    race_cache_ttl_seconds: int = Field(
+        default=60,
+        alias="RACE_CACHE_TTL_SECONDS",
+        ge=0,
+    )
+    reference_cache_ttl_seconds: int = Field(
+        default=300,
+        alias="REFERENCE_CACHE_TTL_SECONDS",
+        ge=0,
+    )
     google_client_id: str | None = Field(default=None, alias="GOOGLE_CLIENT_ID")
     google_client_secret: str | None = Field(
         default=None,

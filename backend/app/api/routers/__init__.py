@@ -2,10 +2,12 @@
 
 from fastapi import APIRouter, FastAPI
 
-from app.api.routers import auth, users
+from app.api.routers import auth, races, reference, users
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
+api_router.include_router(races.router)
+api_router.include_router(reference.router)
 api_router.include_router(users.router)
 
 

@@ -2,9 +2,11 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from app.api.routers import register_routers
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +23,26 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(application)
     register_routers(application, prefix=settings.api_prefix)
+    _initialize_cache(settings)
 
     return application
+
+def _initialize_cache(settings: Settings) -> None:
+    """fastapi-cache を試験的に初期化する。"""
+    try:
+        FastAPICache.get_backend()
+    except (RuntimeError, AssertionError):
+        backend_name = settings.cache_backend.lower()
+        if backend_name != "inmemory":
+            logger.warning(
+                "Unsupported cache backend specified. Falling back to in-memory backend.",
+                extra={"requested_backend": settings.cache_backend},
+            )
+        backend = InMemoryBackend()
+        FastAPICache.init(backend, prefix=settings.cache_prefix)
+        logger.info("Cache backend initialized", extra={"backend": settings.cache_backend})
+    else:
+        return
 
 
 def register_exception_handlers(application: FastAPI) -> None:

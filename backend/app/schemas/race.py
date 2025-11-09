@@ -71,6 +71,17 @@ class RaceDetail(RaceSummary):
     entries: list[RaceEntryRead] = Field(default_factory=list)
 
 
-__all__ = ["RaceBase", "RaceDetail", "RaceEntryBase", "RaceEntryRead", "RaceSummary"]
+class RaceListResponse(BaseModel):
+    """レース一覧レスポンスのスキーマ。"""
+
+    items: list[RaceSummary]
+    total: int = Field(ge=0)
+    limit: int = Field(ge=1)
+    offset: int = Field(ge=0)
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+__all__ = ["RaceBase", "RaceDetail", "RaceEntryBase", "RaceEntryRead", "RaceListResponse", "RaceSummary"]
 
 
