@@ -23,6 +23,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.horse import Horse
     from app.models.jockey import Jockey
+    from app.models.prediction import Prediction
     from app.models.trainer import Trainer
     from app.models.weather import Weather
 
@@ -62,6 +63,11 @@ class Race(Base):
     )
     entries: Mapped[list["RaceEntry"]] = relationship(
         "RaceEntry",
+        back_populates="race",
+        cascade="all, delete-orphan",
+    )
+    predictions: Mapped[list["Prediction"]] = relationship(
+        "Prediction",
         back_populates="race",
         cascade="all, delete-orphan",
     )

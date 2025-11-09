@@ -13,6 +13,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
+    from app.models.prediction import Prediction
 
 
 class User(Base):
@@ -43,6 +44,11 @@ class User(Base):
     )
     auth_tokens: Mapped[list["AuthToken"]] = relationship(
         "AuthToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    predictions: Mapped[list["Prediction"]] = relationship(
+        "Prediction",
         back_populates="user",
         cascade="all, delete-orphan",
     )
