@@ -16,21 +16,37 @@ from app.core.config import get_settings
 
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False,
+)
 
 
 class InvalidTokenError(Exception):
     """トークンが検証に失敗した場合に送出される例外。"""
 
 
+def _normalized_password(password: str) -> str:
+    """bcrypt の入力長制限を回避するため、事前にハッシュ化する。"""
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """平文パスワードとハッシュを比較検証する。"""
-    return pwd_context.verify(plain_password, hashed_password)
+    normalized = _normalized_password(plain_password)
+    if pwd_context.verify(normalized, hashed_password):
+        return True
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError:
+        return False
 
 
 def get_password_hash(password: str) -> str:
     """パスワードのハッシュ値を生成する。"""
-    return pwd_context.hash(password)
+    normalized = _normalized_password(password)
+    return pwd_context.hash(normalized)
 
 
 def create_access_token(

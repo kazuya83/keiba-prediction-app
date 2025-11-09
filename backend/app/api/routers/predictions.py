@@ -18,8 +18,67 @@ from app.schemas.prediction import (
     PredictionListResponse,
     PredictionStats,
 )
+from app.schemas.prediction_request import PredictionJobResponse, PredictionRequest
+from app.services.prediction_runner import (
+    PredictionInput,
+    PredictionRunner,
+    PredictionRunnerError,
+    PredictionTimeoutError,
+    RaceNotFoundError,
+)
 
 router = APIRouter(prefix="/predictions", tags=["predictions"])
+
+
+def get_prediction_runner(db: Session = Depends(get_db_session)) -> PredictionRunner:
+    """PredictionRunner の DI 用ファクトリ。"""
+    return PredictionRunner(db=db)
+
+
+@router.post(
+    "",
+    response_model=PredictionJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="予測を実行する",
+    description="指定されたレースに対して機械学習モデルによる推論を実行します。結果は Prediction テーブルに保存されます。",
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "指定したレースが存在しない場合に返されます。"},
+        status.HTTP_504_GATEWAY_TIMEOUT: {"description": "推論処理がタイムアウトした場合に返されます。"},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"description": "推論処理が失敗した場合に返されます。"},
+    },
+)
+def execute_prediction(
+    request: PredictionRequest,
+    runner: PredictionRunner = Depends(get_prediction_runner),
+    current_user: User = Depends(get_current_active_user),
+) -> PredictionJobResponse:
+    """予測を実行し、ジョブIDと結果を返す。"""
+    input_payload = PredictionInput(
+        race_id=request.race_id,
+        model_id=request.model_id,
+        feature_set_id=request.feature_set_id,
+        stake_amount=request.stake_amount,
+    )
+
+    try:
+        result = runner.run(input_payload, user_id=current_user.id)
+    except RaceNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="レースが見つかりません。",
+        ) from exc
+    except PredictionTimeoutError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="推論処理がタイムアウトしました。",
+        ) from exc
+    except PredictionRunnerError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="予測実行に失敗しました。",
+        ) from exc
+
+    return PredictionJobResponse.from_result(result)
 
 
 @router.get(
@@ -143,6 +202,6 @@ def compare_predictions(
     )
 
 
-__all__ = ["router"]
+__all__ = ["get_prediction_runner", "router"]
 
 
