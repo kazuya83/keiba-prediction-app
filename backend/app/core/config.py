@@ -77,6 +77,23 @@ class Settings(BaseModel):
         default="https://openidconnect.googleapis.com/v1/userinfo",
         alias="GOOGLE_USERINFO_URL",
     )
+    notification_vapid_public_key: str | None = Field(
+        default=None,
+        alias="NOTIFICATION_VAPID_PUBLIC_KEY",
+    )
+    notification_vapid_private_key: str | None = Field(
+        default=None,
+        alias="NOTIFICATION_VAPID_PRIVATE_KEY",
+    )
+    notification_vapid_subject: str | None = Field(
+        default=None,
+        alias="NOTIFICATION_VAPID_SUBJECT",
+    )
+    notification_default_max_retries: int = Field(
+        default=3,
+        alias="NOTIFICATION_DEFAULT_MAX_RETRIES",
+        ge=0,
+    )
 
 
 @lru_cache

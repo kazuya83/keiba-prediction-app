@@ -2,6 +2,13 @@
 
 from app.schemas.horse import HorseBase, HorseRead
 from app.schemas.jockey import JockeyBase, JockeyRead
+from app.schemas.notification import (
+    NotificationListResponse,
+    NotificationRead,
+    NotificationReadRequest,
+    NotificationSettingRead,
+    NotificationSettingUpdate,
+)
 from app.schemas.race import (
     RaceBase,
     RaceDetail,
@@ -19,6 +26,11 @@ __all__ = [
     "HorseRead",
     "JockeyBase",
     "JockeyRead",
+    "NotificationListResponse",
+    "NotificationRead",
+    "NotificationReadRequest",
+    "NotificationSettingRead",
+    "NotificationSettingUpdate",
     "RaceBase",
     "RaceDetail",
     "RaceEntryBase",

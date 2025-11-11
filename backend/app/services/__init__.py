@@ -1,5 +1,14 @@
 """サービスレイヤーモジュールのパッケージ初期化。"""
 
+from app.services.notification_dispatcher import (
+    NotificationDispatcher,
+    NotificationEvent,
+    NotificationSuppressedError,
+    PushDeliveryError,
+    PushNotificationSender,
+    PyWebPushSender,
+    PushSubscription,
+)
 from app.services.prediction_runner import (
     ModelInferenceResult,
     PredictionFeatureContribution,
@@ -25,6 +34,13 @@ __all__ = [
     "PredictionRunner",
     "PredictionRunnerError",
     "PredictionTimeoutError",
+    "PushDeliveryError",
+    "PushNotificationSender",
+    "NotificationDispatcher",
+    "NotificationEvent",
+    "NotificationSuppressedError",
+    "PyWebPushSender",
+    "PushSubscription",
     "RaceNotFoundError",
 ]
 

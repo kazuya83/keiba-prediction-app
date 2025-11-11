@@ -13,6 +13,8 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.auth_token import AuthToken
+    from app.models.notification import Notification
+    from app.models.notification_setting import NotificationSetting
     from app.models.prediction import Prediction
 
 
@@ -51,6 +53,17 @@ class User(Base):
         "Prediction",
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+    notifications: Mapped[list["Notification"]] = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    notification_setting: Mapped["NotificationSetting | None"] = relationship(
+        "NotificationSetting",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     def __repr__(self) -> str:
