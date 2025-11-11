@@ -5,6 +5,7 @@ from app.services.model_trainer import (
     ModelTrainingJobResult,
     ModelTrainingJobStatus,
 )
+from app.services.data_importer import ImportSummary, RaceDataImporter
 from app.services.notification_dispatcher import (
     NotificationDispatcher,
     NotificationEvent,
@@ -47,6 +48,8 @@ __all__ = [
     "PyWebPushSender",
     "PushSubscription",
     "RaceNotFoundError",
+    "RaceDataImporter",
+    "ImportSummary",
     "ModelTrainer",
     "ModelTrainingJobResult",
     "ModelTrainingJobStatus",
