@@ -1,5 +1,10 @@
 """サービスレイヤーモジュールのパッケージ初期化。"""
 
+from app.services.model_trainer import (
+    ModelTrainer,
+    ModelTrainingJobResult,
+    ModelTrainingJobStatus,
+)
 from app.services.notification_dispatcher import (
     NotificationDispatcher,
     NotificationEvent,
@@ -42,6 +47,9 @@ __all__ = [
     "PyWebPushSender",
     "PushSubscription",
     "RaceNotFoundError",
+    "ModelTrainer",
+    "ModelTrainingJobResult",
+    "ModelTrainingJobStatus",
 ]
 
 

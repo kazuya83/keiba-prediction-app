@@ -1,5 +1,6 @@
 """アプリケーションで使用する ORM モデルを管理するパッケージ。"""
 
+from app.models.audit_log import AuditLog
 from app.models.auth_token import AuthToken
 from app.models.horse import Horse
 from app.models.jockey import Jockey
@@ -14,6 +15,7 @@ from app.models.weather import Weather
 
 __all__ = [
     "AuthToken",
+    "AuditLog",
     "Horse",
     "Jockey",
     "Notification",

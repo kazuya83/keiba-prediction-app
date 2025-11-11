@@ -1,5 +1,18 @@
 """Pydantic スキーマのパッケージ。"""
 
+from app.schemas.admin import (
+    AdminErrorLogEntry,
+    AdminErrorLogListResponse,
+    AdminUserListResponse,
+    AdminUserSummary,
+    AdminUserUpdateRequest,
+    AdminUserUpdateResponse,
+    LogLevel,
+    ModelTrainingRequest,
+    ModelTrainingResponse,
+    ModelTrainingStatus,
+)
+from app.schemas.audit_log import AuditLogListResponse, AuditLogRead
 from app.schemas.horse import HorseBase, HorseRead
 from app.schemas.jockey import JockeyBase, JockeyRead
 from app.schemas.notification import (
@@ -31,6 +44,16 @@ __all__ = [
     "NotificationReadRequest",
     "NotificationSettingRead",
     "NotificationSettingUpdate",
+    "AdminUserSummary",
+    "AdminUserListResponse",
+    "AdminUserUpdateRequest",
+    "AdminUserUpdateResponse",
+    "AdminErrorLogEntry",
+    "AdminErrorLogListResponse",
+    "LogLevel",
+    "ModelTrainingRequest",
+    "ModelTrainingResponse",
+    "ModelTrainingStatus",
     "RaceBase",
     "RaceDetail",
     "RaceEntryBase",
@@ -39,6 +62,8 @@ __all__ = [
     "RaceSummary",
     "TrainerBase",
     "TrainerRead",
+    "AuditLogRead",
+    "AuditLogListResponse",
     "UserCreate",
     "UserRead",
     "UserUpdate",

@@ -7,6 +7,7 @@ from fastapi_cache.backends.inmemory import InMemoryBackend
 
 from app.api.routers import register_routers
 from app.core.config import Settings, get_settings
+from app.core.logging import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,8 @@ logger = logging.getLogger(__name__)
 def create_app() -> FastAPI:
     """FastAPI アプリケーションを初期化して返す。"""
     settings = get_settings()
+
+    configure_logging()
 
     application = FastAPI(
         title=settings.app_name,
