@@ -393,11 +393,229 @@ poetry run alembic downgrade <revision>
 poetry run alembic downgrade base
 ```
 
+### アプリケーションのロールバック
+
+#### ECS/Fargateでのロールバック
+
+本番環境で問題が発生した場合、以前のバージョンにロールバックします。
+
+##### 方法1: GitHub Actions経由（推奨）
+
+1. GitHub Actionsの「Deploy to Production」ワークフローを開く
+2. 「Run workflow」をクリック
+3. 環境を「production」に設定
+4. 以前の正常なイメージタグを指定（例: `main-abc1234`）
+5. ワークフローを実行
+
+##### 方法2: AWS CLI経由
+
+```bash
+# 以前のタスク定義を取得
+aws ecs describe-task-definition \
+  --task-definition production-keiba-backend \
+  --query 'taskDefinition.revision' \
+  --output text
+
+# 以前のリビジョンにロールバック
+aws ecs update-service \
+  --cluster production-keiba-cluster \
+  --service production-keiba-backend \
+  --task-definition production-keiba-backend:<previous-revision> \
+  --force-new-deployment
+
+# フロントエンドも同様にロールバック
+aws ecs update-service \
+  --cluster production-keiba-cluster \
+  --service production-keiba-frontend \
+  --task-definition production-keiba-frontend:<previous-revision> \
+  --force-new-deployment
+```
+
+##### 方法3: Terraform経由
+
+```bash
+cd infra/terraform
+
+# 以前のイメージタグを指定してTerraformを実行
+terraform apply \
+  -var="backend_image_tag=main-abc1234" \
+  -var="frontend_image_tag=main-abc1234" \
+  -var="ml_image_tag=main-abc1234" \
+  -var="environment=production"
+```
+
+#### ロールバック後の確認
+
+1. ヘルスチェックエンドポイントを確認
+   ```bash
+   curl https://production-keiba-alb.example.com/api/health
+   ```
+
+2. Smokeテストを実行
+   ```bash
+   ./scripts/smoke-test.sh production <image_tag>
+   ```
+
+3. CloudWatchダッシュボードでメトリクスを確認
+   - エラー率が正常範囲内か
+   - レスポンスタイムが正常か
+   - CPU/メモリ使用率が正常か
+
+### アラート対応手順
+
+#### アラートの種類と対応
+
+##### 1. 高エラー率アラート
+
+**アラート名**: `production-keiba-high-error-rate`
+
+**対応手順**:
+1. CloudWatch Logsでエラーログを確認
+   ```bash
+   aws logs tail /ecs/production-keiba-backend --follow
+   ```
+
+2. エラーの原因を特定
+   - データベース接続エラー
+   - 外部APIのタイムアウト
+   - メモリ不足
+   - その他のアプリケーションエラー
+
+3. 対応
+   - 一時的な問題の場合: 監視を継続
+   - 継続的な問題の場合: ロールバックを検討
+   - データベースの問題: RDSの状態を確認
+
+##### 2. 高レスポンスタイムアラート
+
+**アラート名**: `production-keiba-high-response-time`
+
+**対応手順**:
+1. ALBのメトリクスを確認
+   ```bash
+   aws cloudwatch get-metric-statistics \
+     --namespace AWS/ApplicationELB \
+     --metric-name TargetResponseTime \
+     --dimensions Name=LoadBalancer,Value=production-keiba-alb \
+     --start-time $(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S) \
+     --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+     --period 300 \
+     --statistics Average
+   ```
+
+2. スロークエリを確認
+   - データベースのクエリパフォーマンスを確認
+   - 必要に応じてインデックスを追加
+
+3. リソース使用率を確認
+   - ECSタスクのCPU/メモリ使用率
+   - RDSのCPU/メモリ使用率
+
+4. 対応
+   - スケールアウト（タスク数を増やす）
+   - スケールアップ（タスクのCPU/メモリを増やす）
+   - キャッシュの最適化
+
+##### 3. ECSサービス異常アラート
+
+**対応手順**:
+1. ECSサービスの状態を確認
+   ```bash
+   aws ecs describe-services \
+     --cluster production-keiba-cluster \
+     --services production-keiba-backend
+   ```
+
+2. タスクの状態を確認
+   ```bash
+   aws ecs list-tasks \
+     --cluster production-keiba-cluster \
+     --service-name production-keiba-backend
+   ```
+
+3. タスクのログを確認
+   ```bash
+   aws logs tail /ecs/production-keiba-backend --follow
+   ```
+
+4. 対応
+   - タスクが起動できない場合: タスク定義を確認
+   - タスクがクラッシュする場合: アプリケーションログを確認
+   - ヘルスチェックが失敗する場合: ヘルスチェックエンドポイントを確認
+
+##### 4. RDS異常アラート
+
+**対応手順**:
+1. RDSインスタンスの状態を確認
+   ```bash
+   aws rds describe-db-instances \
+     --db-instance-identifier production-keiba-db
+   ```
+
+2. RDSのメトリクスを確認
+   - CPU使用率
+   - メモリ使用率
+   - 接続数
+   - ディスク使用率
+
+3. 対応
+   - 接続数が上限に達している場合: 接続プールの設定を確認
+   - CPU/メモリが高い場合: インスタンスタイプのアップグレードを検討
+   - ディスク使用率が高い場合: データのアーカイブを検討
+
+#### アラート通知の確認
+
+アラートは以下の方法で通知されます:
+
+1. **メール通知**: SNSトピックに登録されたメールアドレスに送信
+2. **Slack通知**: Slack Webhook URLが設定されている場合、Slackチャンネルに通知
+
+アラート通知を受け取ったら:
+1. アラートの内容を確認
+2. 上記の対応手順に従って対応
+3. 対応完了後、アラートの状態を確認
+4. 必要に応じてインシデントレポートを作成
+
 ### 緊急時の連絡先
 
 - テックリード: [連絡先情報]
 - インフラ担当: [連絡先情報]
 - オンコール: [連絡先情報]
+
+## デプロイ手順
+
+### ステージング環境へのデプロイ
+
+1. `main`ブランチにプッシュすると自動的にステージング環境にデプロイされます
+2. GitHub Actionsの「Deploy to Staging」ワークフローを確認
+3. Smokeテストが成功したことを確認
+4. ステージング環境で動作確認
+
+### 本番環境へのデプロイ
+
+1. GitHub Actionsの「Deploy to Production」ワークフローを開く
+2. 「Run workflow」をクリック
+3. 環境を「production」に設定
+4. イメージタグを指定（デフォルト: `main-<sha>`）
+5. 手動承認を待つ（本番環境の場合）
+6. デプロイ完了後、Smokeテストが自動実行される
+7. CloudWatchダッシュボードでメトリクスを確認
+
+### デプロイ前のチェックリスト
+
+- [ ] すべてのテストがパスしている
+- [ ] コードレビューが完了している
+- [ ] マイグレーションスクリプトが準備されている
+- [ ] ロールバック手順を確認している
+- [ ] 監視ダッシュボードを確認できる状態である
+
+### デプロイ後のチェックリスト
+
+- [ ] Smokeテストが成功している
+- [ ] ヘルスチェックエンドポイントが正常に応答している
+- [ ] エラー率が正常範囲内である
+- [ ] レスポンスタイムが正常範囲内である
+- [ ] ログに異常がない
 
 ## 定期メンテナンス
 
@@ -406,16 +624,22 @@ poetry run alembic downgrade base
 - ジョブの実行状況を確認
 - エラーログを確認
 - 通知の送信状況を確認
+- CloudWatchダッシュボードでメトリクスを確認
+- アラートの状態を確認
 
 ### 毎週
 
 - データベースのバックアップを確認
 - ディスク使用量を確認
 - パフォーマンスメトリクスを確認
+- ECRイメージのクリーンアップ（古いイメージの削除）
+- CloudWatch Logsの保持期間を確認
 
 ### 毎月
 
 - ログのアーカイブ
 - データベースの最適化（VACUUM、ANALYZE）
 - セキュリティアップデートの確認
+- インフラコストの確認
+- 監視設定の見直し
 

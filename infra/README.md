@@ -1,19 +1,44 @@
-# Infra
+# インフラストラクチャ
 
-開発・本番環境のインフラ構成を管理します。Terraform や Ansible、GitHub Actions などの設定ファイルを配置する想定です。
+本ディレクトリには、開発・本番環境のインフラ構成を管理するファイルが含まれています。
 
-## 想定ディレクトリ
+## 構成
+
+- `terraform/`: Terraformコード（IaC）
+- `README.md`: このファイル
+
+## ディレクトリ構造
 
 ```
-terraform/
-ansible/
-github-actions/
-scripts/
+infra/
+├── terraform/
+│   ├── main.tf              # メインのTerraform設定
+│   ├── variables.tf         # 変数定義
+│   ├── outputs.tf           # 出力値定義
+│   ├── modules/             # 再利用可能なモジュール
+│   │   ├── vpc/             # VPC、サブネット
+│   │   ├── ecr/             # ECRリポジトリ
+│   │   ├── ecs/             # ECSクラスター、サービス
+│   │   ├── rds/             # RDSインスタンス
+│   │   ├── alb/             # Application Load Balancer
+│   │   ├── cloudwatch/      # CloudWatch Logs、アラーム
+│   │   └── monitoring/      # 監視、アラート設定
+│   └── README.md            # Terraformの使用方法
+└── README.md                # このファイル
 ```
 
-## 今後のタスク例
+## デプロイ方法
 
-- IaC テンプレートの整備
-- CI/CD パイプラインの定義
-- 監視・ログ収集基盤の設計
+詳細は [terraform/README.md](./terraform/README.md) を参照してください。
 
+## CI/CD
+
+GitHub Actionsのワークフロー（`.github/workflows/deploy.yml`）から自動的にデプロイされます。
+
+## 監視
+
+- CloudWatchダッシュボード: メトリクスの可視化
+- CloudWatchアラーム: 異常検知と通知
+- SNS: メール/Slack通知
+
+詳細は [docs/runbook.md](../docs/runbook.md) を参照してください。

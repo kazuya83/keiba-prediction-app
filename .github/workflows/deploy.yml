@@ -1,0 +1,210 @@
+name: Deploy to Staging/Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'デプロイ環境'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: 'Dockerイメージタグ（デフォルト: main-<sha>）'
+        required: false
+        type: string
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-northeast-1.amazonaws.com
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      backend_image_tag: ${{ steps.meta.outputs.backend_tag }}
+      frontend_image_tag: ${{ steps.meta.outputs.frontend_tag }}
+      ml_image_tag: ${{ steps.meta.outputs.ml_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tags
+        id: meta
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          else
+            TAG="main-${SHA}"
+          fi
+          echo "backend_tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "frontend_tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "ml_tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/staging-keiba-backend:${{ steps.meta.outputs.backend_tag }} -f backend/Dockerfile backend/
+          docker push ${{ env.ECR_REGISTRY }}/staging-keiba-backend:${{ steps.meta.outputs.backend_tag }}
+          docker tag ${{ env.ECR_REGISTRY }}/staging-keiba-backend:${{ steps.meta.outputs.backend_tag }} ${{ env.ECR_REGISTRY }}/production-keiba-backend:${{ steps.meta.outputs.backend_tag }}
+          docker push ${{ env.ECR_REGISTRY }}/production-keiba-backend:${{ steps.meta.outputs.backend_tag }}
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/staging-keiba-frontend:${{ steps.meta.outputs.frontend_tag }} -f frontend/Dockerfile frontend/
+          docker push ${{ env.ECR_REGISTRY }}/staging-keiba-frontend:${{ steps.meta.outputs.frontend_tag }}
+          docker tag ${{ env.ECR_REGISTRY }}/staging-keiba-frontend:${{ steps.meta.outputs.frontend_tag }} ${{ env.ECR_REGISTRY }}/production-keiba-frontend:${{ steps.meta.outputs.frontend_tag }}
+          docker push ${{ env.ECR_REGISTRY }}/production-keiba-frontend:${{ steps.meta.outputs.frontend_tag }}
+
+      - name: Build and push ML inference image
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/staging-keiba-ml-inference:${{ steps.meta.outputs.ml_tag }} -f ml/Dockerfile .
+          docker push ${{ env.ECR_REGISTRY }}/staging-keiba-ml-inference:${{ steps.meta.outputs.ml_tag }}
+          docker tag ${{ env.ECR_REGISTRY }}/staging-keiba-ml-inference:${{ steps.meta.outputs.ml_tag }} ${{ env.ECR_REGISTRY }}/production-keiba-ml-inference:${{ steps.meta.outputs.ml_tag }}
+          docker push ${{ env.ECR_REGISTRY }}/production-keiba-ml-inference:${{ steps.meta.outputs.ml_tag }}
+
+  smoke-test-staging:
+    name: Smoke Test (Staging)
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh staging ${{ needs.build-and-push.outputs.backend_image_tag }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-push, smoke-test-staging]
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    environment:
+      name: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        working-directory: infra/terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" \
+            -backend-config="key=staging/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_environment: staging
+          TF_VAR_backend_image_tag: ${{ needs.build-and-push.outputs.backend_image_tag }}
+          TF_VAR_frontend_image_tag: ${{ needs.build-and-push.outputs.frontend_image_tag }}
+          TF_VAR_ml_image_tag: ${{ needs.build-and-push.outputs.ml_image_tag }}
+          TF_VAR_database_url: ${{ secrets.STAGING_DATABASE_URL }}
+          TF_VAR_db_username: ${{ secrets.STAGING_DB_USERNAME }}
+          TF_VAR_db_password: ${{ secrets.STAGING_DB_PASSWORD }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_environment: staging
+          TF_VAR_backend_image_tag: ${{ needs.build-and-push.outputs.backend_image_tag }}
+          TF_VAR_frontend_image_tag: ${{ needs.build-and-push.outputs.frontend_image_tag }}
+          TF_VAR_ml_image_tag: ${{ needs.build-and-push.outputs.ml_image_tag }}
+          TF_VAR_database_url: ${{ secrets.STAGING_DATABASE_URL }}
+          TF_VAR_db_username: ${{ secrets.STAGING_DB_USERNAME }}
+          TF_VAR_db_password: ${{ secrets.STAGING_DB_PASSWORD }}
+        run: terraform apply -auto-approve tfplan
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        working-directory: infra/terraform
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" \
+            -backend-config="key=production/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        working-directory: infra/terraform
+        env:
+          TF_VAR_environment: production
+          TF_VAR_backend_image_tag: ${{ needs.build-and-push.outputs.backend_image_tag }}
+          TF_VAR_frontend_image_tag: ${{ needs.build-and-push.outputs.frontend_image_tag }}
+          TF_VAR_ml_image_tag: ${{ needs.build-and-push.outputs.ml_image_tag }}
+          TF_VAR_database_url: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          TF_VAR_db_username: ${{ secrets.PRODUCTION_DB_USERNAME }}
+          TF_VAR_db_password: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: infra/terraform
+        env:
+          TF_VAR_environment: production
+          TF_VAR_backend_image_tag: ${{ needs.build-and-push.outputs.backend_image_tag }}
+          TF_VAR_frontend_image_tag: ${{ needs.build-and-push.outputs.frontend_image_tag }}
+          TF_VAR_ml_image_tag: ${{ needs.build-and-push.outputs.ml_image_tag }}
+          TF_VAR_database_url: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          TF_VAR_db_username: ${{ secrets.PRODUCTION_DB_USERNAME }}
+          TF_VAR_db_password: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh production ${{ needs.build-and-push.outputs.backend_image_tag }}
+
