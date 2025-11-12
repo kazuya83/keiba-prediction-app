@@ -395,9 +395,17 @@ def main() -> None:
 
         pipeline = trainer.get_pipeline()
         if pipeline:
+            # パイプラインのメタデータをJSONで保存
             with open(pipeline_filename, "w", encoding="utf-8") as f:
                 json.dump(pipeline.to_dict(), f, ensure_ascii=False, indent=2)
-            logger.info(f"Pipeline saved to {pipeline_filename}")
+            logger.info(f"Pipeline metadata saved to {pipeline_filename}")
+
+            # preprocessorをjoblibで保存
+            preprocessor_filename = output_dir / f"preprocessor_{timestamp}.pkl"
+            preprocessor = pipeline.get_preprocessor()
+            if preprocessor:
+                joblib.dump(preprocessor, preprocessor_filename)
+                logger.info(f"Preprocessor saved to {preprocessor_filename}")
 
         with open(metadata_filename, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)

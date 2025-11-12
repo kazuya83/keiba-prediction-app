@@ -47,6 +47,24 @@ services:
     depends_on:
       - db
 
+  ml-inference:
+    build:
+      context: .
+      dockerfile: ml/Dockerfile
+    command: python -m ml.inference.server
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./backend/.env.example
+    volumes:
+      - ./ml:/app/ml
+      - ./backend/app:/app/app
+      - ./ml/artifacts:/app/ml/artifacts
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://keiba:keiba@db:5432/keiba
+
 volumes:
   db-data:
 

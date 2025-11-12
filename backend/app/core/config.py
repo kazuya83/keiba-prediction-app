@@ -94,6 +94,24 @@ class Settings(BaseModel):
         alias="NOTIFICATION_DEFAULT_MAX_RETRIES",
         ge=0,
     )
+    ml_inference_base_url: str = Field(
+        default="http://ml-inference:8001",
+        alias="ML_INFERENCE_BASE_URL",
+    )
+    ml_inference_timeout_seconds: float = Field(
+        default=60.0,
+        alias="ML_INFERENCE_TIMEOUT_SECONDS",
+        ge=0,
+    )
+    ml_inference_max_retries: int = Field(
+        default=3,
+        alias="ML_INFERENCE_MAX_RETRIES",
+        ge=0,
+    )
+    use_ml_inference: bool = Field(
+        default=False,
+        alias="USE_ML_INFERENCE",
+    )
 
 
 @lru_cache

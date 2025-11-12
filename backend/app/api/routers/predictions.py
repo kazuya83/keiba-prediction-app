@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db_session
+from app.core.config import get_settings
 from app.crud import prediction as prediction_crud
 from app.models.prediction import PredictionResult
 from app.models.user import User
@@ -19,6 +20,7 @@ from app.schemas.prediction import (
     PredictionStats,
 )
 from app.schemas.prediction_request import PredictionJobResponse, PredictionRequest
+from app.services.http_model_gateway import HTTPModelGateway
 from app.services.prediction_runner import (
     PredictionInput,
     PredictionRunner,
@@ -32,6 +34,14 @@ router = APIRouter(prefix="/predictions", tags=["predictions"])
 
 def get_prediction_runner(db: Session = Depends(get_db_session)) -> PredictionRunner:
     """PredictionRunner の DI 用ファクトリ。"""
+    settings = get_settings()
+    if settings.use_ml_inference:
+        model_gateway = HTTPModelGateway(
+            base_url=settings.ml_inference_base_url,
+            timeout_seconds=settings.ml_inference_timeout_seconds,
+            max_retries=settings.ml_inference_max_retries,
+        )
+        return PredictionRunner(db=db, model_gateway=model_gateway)
     return PredictionRunner(db=db)
 
 

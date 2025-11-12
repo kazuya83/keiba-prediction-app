@@ -150,6 +150,9 @@ class FeaturePipeline:
     def to_dict(self) -> dict[str, Any]:
         """パイプラインを辞書形式に変換する（保存用）。
 
+        注意: このメソッドはpreprocessorを保存しません。
+        preprocessorは別途joblibでシリアライズする必要があります。
+
         Returns:
             パイプラインの辞書表現
         """
@@ -161,6 +164,14 @@ class FeaturePipeline:
             "schema": self._schema.to_dict(),
             "label_encoders": label_encoders_dict,
         }
+
+    def get_preprocessor(self) -> ColumnTransformer | None:
+        """preprocessorを取得する。
+
+        Returns:
+            preprocessor（未構築の場合はNone）
+        """
+        return self._preprocessor
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> FeaturePipeline:
