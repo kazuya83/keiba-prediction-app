@@ -65,6 +65,20 @@ services:
     environment:
       - DATABASE_URL=postgresql://keiba:keiba@db:5432/keiba
 
+  scheduler:
+    build:
+      context: ./backend
+    command: python -m app.tasks.scheduler_main
+    env_file:
+      - ./backend/.env.example
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - backend
+    environment:
+      - DATABASE_URL=postgresql://keiba:keiba@db:5432/keiba
+
 volumes:
   db-data:
 

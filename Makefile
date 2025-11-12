@@ -42,3 +42,11 @@ clean:
 	cd $(PYTHON_PROJECT_DIR) && poetry env remove --all || true
 	cd $(FRONTEND_PROJECT_DIR) && pnpm store prune
 
+run-scheduler:
+	@echo "==> Running scheduler"
+	cd $(PYTHON_PROJECT_DIR) && poetry run python -m app.tasks.scheduler_main
+
+run-once:
+	@echo "==> Running data update job once"
+	cd $(PYTHON_PROJECT_DIR) && poetry run python -m app.tasks.run_once
+

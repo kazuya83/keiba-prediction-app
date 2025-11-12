@@ -112,6 +112,37 @@ class Settings(BaseModel):
         default=False,
         alias="USE_ML_INFERENCE",
     )
+    # スケジューラ設定
+    data_update_cron: str = Field(
+        default="0 3 * * *",
+        alias="DATA_UPDATE_CRON",
+        description="データ更新ジョブのcron表現（デフォルト: 毎日3時）",
+    )
+    data_update_timezone: str = Field(
+        default="Asia/Tokyo",
+        alias="DATA_UPDATE_TIMEZONE",
+        description="データ更新ジョブのタイムゾーン",
+    )
+    trigger_model_training: bool = Field(
+        default=True,
+        alias="TRIGGER_MODEL_TRAINING",
+        description="データ更新後にモデル再学習をトリガーするか",
+    )
+    notify_on_success: bool = Field(
+        default=False,
+        alias="NOTIFY_ON_SUCCESS",
+        description="ジョブ成功時も通知を送信するか",
+    )
+    notify_on_partial: bool = Field(
+        default=True,
+        alias="NOTIFY_ON_PARTIAL",
+        description="ジョブ部分成功時も通知を送信するか",
+    )
+    notify_on_failure: bool = Field(
+        default=True,
+        alias="NOTIFY_ON_FAILURE",
+        description="ジョブ失敗時も通知を送信するか",
+    )
 
 
 @lru_cache
