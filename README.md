@@ -41,6 +41,33 @@
 - `make up`: Docker Compose を起動
 - `make down`: Docker Compose を停止
 
+## ドキュメント
+
+### ドキュメントの生成
+
+```bash
+# OpenAPI仕様のエクスポート
+cd backend
+poetry run python scripts/export_openapi.py
+
+# ER図の生成（オプション、eralchemy2またはsqlalchemy-schemadisplayが必要）
+poetry run python scripts/generate_er_diagram.py
+
+# MkDocsでドキュメントサイトをビルド
+mkdocs build
+
+# ローカルでプレビュー
+mkdocs serve
+```
+
+### ドキュメントの構成
+
+- `docs/`: ドキュメントのソースファイル
+- `mkdocs.yml`: MkDocsの設定ファイル
+- `.github/workflows/docs.yml`: ドキュメントビルドとデプロイのCIワークフロー
+
+詳細は [ドキュメント](./docs/index.md) を参照してください。
+
 ## 追加メモ
 
 - 詳細なコーディング規約は `rule/coding-guidelines.md` を参照してください。

@@ -1,0 +1,121 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocs-git-revision-date-localized-plugin
+
+      - name: Generate OpenAPI spec
+        run: |
+          cd backend
+          pip install poetry
+          poetry install --no-root
+          poetry run python scripts/export_openapi.py
+        continue-on-error: true
+
+      - name: Build documentation
+        run: |
+          mkdocs build --strict
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: site/
+
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocs-git-revision-date-localized-plugin lychee
+
+      - name: Generate OpenAPI spec
+        run: |
+          cd backend
+          pip install poetry
+          poetry install --no-root
+          poetry run python scripts/export_openapi.py
+        continue-on-error: true
+
+      - name: Build documentation
+        run: |
+          mkdocs build --strict
+
+      - name: Check links
+        run: |
+          lychee --verbose --no-progress --exclude-mail --exclude-localhost site/
+        continue-on-error: true
+
+  deploy:
+    needs: [build, link-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material mkdocs-git-revision-date-localized-plugin
+
+      - name: Generate OpenAPI spec
+        run: |
+          cd backend
+          pip install poetry
+          poetry install --no-root
+          poetry run python scripts/export_openapi.py
+        continue-on-error: true
+
+      - name: Build documentation
+        run: |
+          mkdocs build --strict
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+

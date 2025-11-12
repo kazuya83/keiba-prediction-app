@@ -1,0 +1,87 @@
+site_name: Keiba Prediction App Documentation
+site_description: 競馬予測アプリケーションのドキュメント
+site_author: Keiba Dev Team
+site_url: https://example.com/docs
+
+repo_name: keiba
+repo_url: https://github.com/example/keiba
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - API:
+    - OpenAPI仕様: api/openapi.json
+  - データベース:
+    - ER図: db/er_diagram.png
+  - 機械学習:
+    - パイプライン: ml/README.md
+  - 運用:
+    - Runbook: runbook.md
+  - UI:
+    - デザインガイドライン: ui/style-guide.md
+  - 通知:
+    - Web Push: notifications/webpush.md
+  - 画面仕様:
+    - 認証: screens/auth.md
+    - ダッシュボード: screens/dashboard.md
+    - レース一覧: screens/race-list.md
+    - 予測: screens/prediction.md
+    - 予測履歴: screens/prediction-history.md
+    - 予測精度: screens/prediction-accuracy.md
+    - 通知: screens/notifications.md
+    - 設定: screens/settings.md
+    - 管理画面: screens/admin.md
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/example/keiba
+  version:
+    provider: mike
+
