@@ -1,5 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import App from "./App";
+import "./styles/index.css";
 
 const rootElement = document.getElementById("root");
 
@@ -9,10 +11,7 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <main>
-      <h1>Keiba Prediction App</h1>
-      <p>フロントエンド初期セットアップが完了しました。</p>
-    </main>
+    <App />
   </React.StrictMode>,
 );
 

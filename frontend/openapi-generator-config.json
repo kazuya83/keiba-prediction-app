@@ -1,0 +1,11 @@
+{
+  "generatorName": "typescript-axios",
+  "inputSpec": "http://localhost:8000/openapi.json",
+  "outputDir": "src/lib/api/generated",
+  "additionalProperties": {
+    "supportsES6": true,
+    "withInterfaces": true,
+    "typescriptThreePlus": true
+  }
+}
+

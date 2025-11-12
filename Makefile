@@ -22,8 +22,8 @@ lint:
 	@echo "==> Linting backend (flake8, mypy)"
 	cd $(PYTHON_PROJECT_DIR) && poetry run flake8 .
 	cd $(PYTHON_PROJECT_DIR) && poetry run mypy .
-	@echo "==> Linting frontend (eslint)"
-	cd $(FRONTEND_PROJECT_DIR) && pnpm exec eslint "src/**/*.{ts,tsx}"
+	@echo "==> Linting frontend (eslint, stylelint)"
+	cd $(FRONTEND_PROJECT_DIR) && pnpm lint
 
 test:
 	@echo "==> Running backend tests (pytest)"
