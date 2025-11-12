@@ -143,6 +143,11 @@ class Settings(BaseModel):
         alias="NOTIFY_ON_FAILURE",
         description="ジョブ失敗時も通知を送信するか",
     )
+    notification_api_url: str | None = Field(
+        default=None,
+        alias="NOTIFICATION_API_URL",
+        description="CI結果通知用のAPI URL",
+    )
 
 
 @lru_cache

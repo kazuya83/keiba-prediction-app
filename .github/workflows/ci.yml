@@ -1,0 +1,327 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  PYTHON_VERSION: "3.11"
+  NODE_VERSION: "20"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: poetry install --no-interaction --no-root
+
+      - name: Run black
+        working-directory: ./backend
+        run: poetry run black --check app tests
+
+      - name: Run isort
+        working-directory: ./backend
+        run: poetry run isort --check-only app tests
+
+      - name: Run flake8
+        working-directory: ./backend
+        run: poetry run flake8 app tests
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        working-directory: ./frontend
+        run: pnpm lint
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: poetry install --no-interaction --no-root
+
+      - name: Run database migrations
+        working-directory: ./backend
+        run: poetry run alembic upgrade head
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: poetry run pytest --cov=app --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage.xml
+          flags: backend
+          name: backend-coverage
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: pnpm test --run --coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./frontend/coverage/coverage-final.json
+          flags: frontend
+          name: frontend-coverage
+
+  test-ml:
+    name: Test ML
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install ML dependencies
+        working-directory: ./ml
+        run: |
+          poetry init --no-interaction
+          poetry add pytest pytest-cov pandas numpy scikit-learn lightgbm xgboost
+          poetry add --dev pytest
+
+      - name: Install backend dependencies (for shared modules)
+        working-directory: ./backend
+        run: poetry install --no-interaction --no-root
+
+      - name: Run ML tests
+        working-directory: ./ml
+        run: poetry run pytest --cov=ml --cov-report=xml --cov-report=html
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./ml/coverage.xml
+          flags: ml
+          name: ml-coverage
+
+  test-e2e:
+    name: Test E2E (Playwright)
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install Playwright browsers
+        working-directory: ./e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: ./e2e
+        run: pnpm test
+        env:
+          BASE_URL: http://localhost:5173
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 30
+
+  notify:
+    name: Notify CI Results
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, test-ml, test-e2e]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: poetry install --no-interaction --no-root
+
+      - name: Send notification
+        working-directory: ./backend
+        run: |
+          poetry run python -c "
+          import os
+          import sys
+          import asyncio
+          import httpx
+          
+          async def send_notification():
+              job_status = {
+                  'test-backend': '${{ needs.test-backend.result }}',
+                  'test-frontend': '${{ needs.test-frontend.result }}',
+                  'test-ml': '${{ needs.test-ml.result }}',
+                  'test-e2e': '${{ needs.test-e2e.result }}'
+              }
+              
+              all_passed = all(status == 'success' for status in job_status.values())
+              status = 'success' if all_passed else 'failure'
+              
+              commit_sha = os.getenv('GITHUB_SHA', '')
+              branch = os.getenv('GITHUB_REF_NAME', '')
+              workflow_url = f\"{os.getenv('GITHUB_SERVER_URL')}/{os.getenv('GITHUB_REPOSITORY')}/actions/runs/{os.getenv('GITHUB_RUN_ID')}\"
+              
+              status_emoji = '✅' if status == 'success' else '❌'
+              status_text = '成功' if status == 'success' else '失敗'
+              
+              message = f'CI結果: {status_emoji} {status_text}\\n'
+              if branch:
+                  message += f'ブランチ: {branch}\\n'
+              if commit_sha:
+                  message += f'コミット: {commit_sha[:7]}\\n'
+              message += '\\nジョブ結果:\\n'
+              for job, job_status in job_status.items():
+                  emoji = '✅' if job_status == 'success' else '❌'
+                  status_display = '成功' if job_status == 'success' else '失敗'
+                  message += f'  {emoji} {job}: {status_display}\\n'
+              if workflow_url:
+                  message += f'\\n詳細: {workflow_url}'
+              
+              notification_url = os.getenv('NOTIFICATION_API_URL', '')
+              if notification_url:
+                  async with httpx.AsyncClient(timeout=10.0) as client:
+                      try:
+                          response = await client.post(
+                              notification_url,
+                              json={
+                                  'message': message,
+                                  'status': status,
+                                  'jobs': job_status,
+                                  'commit_sha': commit_sha,
+                                  'branch': branch,
+                                  'workflow_url': workflow_url,
+                              }
+                          )
+                          response.raise_for_status()
+                          print('Notification sent successfully')
+                      except Exception as e:
+                          print(f'Failed to send notification: {e}')
+              else:
+                  print('NOTIFICATION_API_URL not set, skipping notification')
+          
+          asyncio.run(send_notification())
+          "
+        env:
+          NOTIFICATION_API_URL: ${{ secrets.NOTIFICATION_API_URL }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+
