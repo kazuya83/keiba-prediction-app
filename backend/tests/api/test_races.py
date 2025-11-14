@@ -131,3 +131,5 @@ def test_get_race_detail_not_found_returns_404(
     assert response.json()["detail"] == "指定したレースが見つかりません。"
 
 
+
+

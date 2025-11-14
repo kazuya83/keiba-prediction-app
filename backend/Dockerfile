@@ -17,9 +17,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir poetry==1.7.1
 
 # 依存関係をインストール
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock* ./
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-dev --no-interaction --no-root
+    && (poetry install --only main --no-interaction --no-root || \
+        (poetry lock && poetry install --only main --no-interaction --no-root))
 
 # ステージ2: ランタイムステージ
 FROM python:3.11-slim

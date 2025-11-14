@@ -40,12 +40,19 @@ services:
 
   ml-worker:
     build:
-      context: ./ml
+      context: .
+      dockerfile: ml/Dockerfile
     command: python -m ml.worker
+    env_file:
+      - ./backend/.env.example
     volumes:
-      - ./ml:/app
+      - ./ml:/app/ml
+      - ./backend/app:/app/app
+      - ./ml/artifacts:/app/ml/artifacts
     depends_on:
       - db
+    environment:
+      - DATABASE_URL=postgresql://keiba:keiba@db:5432/keiba
 
   ml-inference:
     build:
